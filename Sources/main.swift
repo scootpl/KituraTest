@@ -11,6 +11,7 @@ import Kitura
 import HeliumLogger
 import LoggerAPI
 import Kassandra
+import protoc_gen_swift
 
 HeliumLogger.use()
 
@@ -44,8 +45,23 @@ router.get("/user/:name") { request, response, next in
             return
         }
         
-        let id = rows.first!["id"]
-        try! response.send("User: '\(name)' UUID: \(id!)").end()
+        guard let id = rows.first!["id"] as? UUID else {
+            Log.error("Wrong id")
+            try! response.send("Wrong id").end()
+            return
+        }
+        
+        try! response.send("User: '\(name)' UUID: \(id.uuidString)").end()
+        
+        var user = User()
+        user.uuid = id.uuidString
+        user.user = name
+        let data = try! user.serializeProtobuf()
+        
+        // DEBUG
+        let rawuser = try! User(protobuf: data)
+        let json = try! rawuser.serializeJSON()
+        print("JSON from protobuf, only for debug: \(json)")
     }
 }
 
